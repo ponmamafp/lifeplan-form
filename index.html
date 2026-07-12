@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ライフプラン ヒアリングフォーム</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{--navy:#1f3864;--blue:#2e5496;--lblue:#e8f0fb;--line:#d9e2ef;--bg:#f5f7fb;
+    --ink:#1c2433;--muted:#6b7686;--yellow:#fff7d6;--ok:#1f9d6b;--accent:#e76f51;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    background:var(--bg);color:var(--ink);font-size:16px;line-height:1.6;padding-bottom:96px}
+  header{background:var(--navy);color:#fff;padding:14px 16px}
+  header h1{margin:0;font-size:17px;font-weight:700}
+  header p{margin:3px 0 0;font-size:11px;opacity:.85}
+  .tabbar{display:flex;gap:6px;overflow-x:auto;padding:10px 12px;background:var(--navy);
+    position:sticky;top:0;z-index:30;-webkit-overflow-scrolling:touch}
+  .tabbar::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto;border:none;background:rgba(255,255,255,.14);color:#fff;border-radius:20px;
+    padding:8px 14px;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer}
+  .chip.active{background:#fff;color:var(--navy)}
+  .chip.touched{background:#5b8def;color:#fff}
+  .chip.touched.active{background:#fff;color:#2e5496}
+  .chip.sum{background:var(--accent);color:#fff}
+  .chip.sum.active{background:#fff;color:var(--accent)}
+  .tools{display:flex;gap:8px;flex-wrap:wrap;padding:9px 12px;background:#fff;border-bottom:1px solid var(--line)}
+  .btn{border:none;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer}
+  .btn.s{flex:1 1 auto;min-width:90px}
+  .btn.primary{background:var(--blue);color:#fff}
+  .btn.ghost{background:var(--lblue);color:var(--navy)}
+  .btn.warn{background:#fdecec;color:#c0392b}
+  .btn.add{background:#eaf7f0;color:var(--ok);width:100%;padding:12px;margin:6px 0 2px;font-size:13px}
+  .btn.del{background:transparent;color:#c0392b;font-size:11px;padding:4px 8px;float:right}
+  .save-note{font-size:11px;color:var(--ok);text-align:center;padding:5px;background:#fff}
+  .wrap{max-width:680px;margin:0 auto;padding:14px}
+  .panel{display:none}
+  .panel.active{display:block}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .sec-head{background:var(--blue);color:#fff;padding:12px 16px;font-weight:700;font-size:15px}
+  .sec-note{font-size:12px;color:var(--muted);padding:8px 16px 0}
+  .sub{background:var(--lblue);color:var(--navy);font-weight:700;font-size:13px;padding:8px 16px;border-top:1px solid var(--line)}
+  .childinfo{font-size:12px;color:var(--blue);font-weight:700;padding:8px 16px 0}
+  .tag{font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;margin-left:6px;vertical-align:middle}
+  .tag.past{background:#eceff3;color:#8a93a3}
+  .tag.now{background:#dbe9ff;color:#1f5fbf}
+  .tag.soon{background:#e3f6ec;color:#1f9d6b}
+  .field{padding:12px 16px;border-top:1px solid #eef2f8}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+  .field .unit{color:var(--muted);font-weight:400;font-size:12px}
+  input,select,textarea{width:100%;border:1px solid #c7d2e2;border-radius:10px;padding:11px 12px;
+    font-size:16px;background:var(--yellow);font-family:inherit}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,84,150,.15)}
+  textarea{min-height:74px;resize:vertical}
+  select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%232e5496' stroke-width='2'/></svg>");
+    background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+  .nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);
+    padding:10px 14px;display:flex;gap:10px;align-items:center;max-width:680px;margin:0 auto;z-index:25}
+  .nav .pg{font-size:12px;color:var(--muted);flex:0 0 auto;min-width:52px;text-align:center}
+  .nav .btn{flex:1 1 0}
+  /* 見える化 */
+  .sum-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .scard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+  .scard .t{font-size:11px;color:var(--muted)}
+  .scard .v{font-size:20px;font-weight:800;color:var(--navy);margin-top:4px;line-height:1.2}
+  .scard .s{font-size:11px;color:var(--muted);margin-top:2px}
+  .scard.big{grid-column:1/3;background:linear-gradient(135deg,#1f3864,#2e5496);border:none}
+  .scard.big .t{color:#cdd9ee}.scard.big .v{color:#fff;font-size:24px}.scard.big .s{color:#cdd9ee}
+  .chartbox{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:4px}
+  .chartbox h3{margin:0 0 4px;font-size:14px;color:var(--navy)}
+  .chartbox p{margin:0 0 10px;font-size:11px;color:var(--muted)}
+  .toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--navy);color:#fff;
+    padding:10px 18px;border-radius:24px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:40}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>ライフプラン ヒアリングフォーム</h1>
+  <p>黄色い欄に入力（自動保存）。<strong>わからない欄は飛ばしてOK！</strong>空欄はこちらで確認してお返しします。</p>
+</header>
+<div class="tabbar" id="tabbar"></div>
+<div class="tools">
+  <button class="btn primary s" onclick="exportCSV()">CSV出力（提出用）</button>
+  <button class="btn ghost s" onclick="exportXLSX()">Excel出力（控え用）</button>
+  <button class="btn ghost s" onclick="document.getElementById('csvfile').click()">CSV読込</button>
+  <button class="btn warn s" onclick="clearAll()">全消去</button>
+  <input type="file" id="csvfile" accept=".csv" style="display:none" onchange="importCSV(this)">
+</div>
+<div class="save-note" id="savenote">自動保存：—</div>
+<div class="wrap" id="form"></div>
+
+<div class="nav">
+  <button class="btn ghost" onclick="prevTab()">← 戻る</button>
+  <span class="pg" id="pg">1 / 1</span>
+  <button class="btn primary" onclick="nextTab()">次へ →</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SEL={
+  pension:["第1号(国民年金)","第2号(厚生年金)","第3号(扶養)"],
+  pay:["月払","年払"], permon:["毎月","毎年"], yn:["あり","なし"],
+  rate:["固定","変動"], build:["マンション","戸建て"], own:["賃貸","持ち家"],
+  hoken:["終身","定期"], contractor:["夫","妻"],
+  hokenbunrui:["生命保険","個人年金保険","医療・がん保険","学資・こども保険","介護保険","その他(火災・傷害など)"],
+  dc:["なし","夫のみ","妻のみ","夫婦とも"],
+  yochien:["公立","私立","通わせない"],
+  shogaku:["公立","私立"], chugaku:["公立","私立"], koukou:["公立","私立"],
+  daigaku:["進学しない","国公立","私立(文系)","私立(理系)","短大","専門学校"],
+  kyoju:["自宅から通学","下宿・一人暮らし"],
+  shokugyo:["会社員","公務員","自営業・フリーランス","会社役員","パート・アルバイト","専業主婦・主夫","年金生活","その他"],
+  otherinc:["贈与","不動産収入","その他"],
+  loanitem:["自動車","教育(奨学金)","その他"],
+  carrier:["docomo","au","SoftBank","楽天モバイル","UQ mobile","Y!mobile","格安SIM","その他"],
+  pref:["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"],
+  kakusim:["検討したい","今のままでいい","すでに格安SIM"],
+  konetsu:["興味あり","今のままでいい"],
+  keizai:["楽天経済圏","PayPay/ソフトバンク","au/Ponta","dポイント","特になし"],
+  furusato:["活用している","していない","興味あり"],
+  ribo:["あり","なし"],
+  karikae:["検討したい","予定なし","該当なし(住宅ローンなし)"],
+};
+const CHILD_SUFFIXES=["_名前","_生年月日","_幼稚園","_小学校","_中学校","_高校","_大学","_大学居住",
+  "_学費","_給食教材","_習い事","_小遣い等"];
+function f(id,label,opt={}){return {id,label,type:opt.type||"text",unit:opt.unit||"",options:opt.options||null,ph:opt.ph||"",cond:opt.cond||null};}
+
+const KOTEI=["光熱費(電気ガス水道)","ケータイ代","インターネット代","サブスク","カード年会費",
+  "コンタクト・医療費","ご主人のお小遣い","奥様のお小遣い"];
+const TOKUBETSU=["旅行","家電の買い替え","プレゼント・お年玉","お子さんの結婚祝い","里帰り",
+  "その他①","その他②","その他③"];
+const ALLFIXED=KOTEI.concat(TOKUBETSU);
+const SEIKATSU=["食費","日用品","交通費(ガソリン電車)","レジャー","外食費","その他①","その他②","その他③"];
+const ASSETS=[{n:"奥様NISA",note:"証券会社名も"},{n:"ご主人NISA",note:"証券会社名も"},
+  {n:"金融資産③",note:"株/債券/iDeCo/財形/DC/他"},{n:"金融資産④",note:"株/債券/iDeCo/財形/DC/他"},
+  {n:"金融資産⑤",note:"株/債券/iDeCo/財形/DC/他"},{n:"金融資産⑥",note:"株/債券/iDeCo/財形/DC/他"}];
+const INS_N=12;
+
+// 子ども定義（動的）
+function childFamily(i){return {sub:"子ども"+i,child:i,fields:[
+  f("子"+i+"_名前","子"+i+"：お名前（ふりがな・名字なし）"),
+  f("子"+i+"_生年月日","子"+i+"：生年月日（西暦）",{type:"date"}),
+]};}
+function childCost(i){return {sub:i+"人目のお子様",child:i,fields:[
+  f("子"+i+"_幼稚園","幼稚園・保育園",{type:"select",options:SEL.yochien}),
+  f("子"+i+"_小学校","小学校",{type:"select",options:SEL.shogaku}),
+  f("子"+i+"_中学校","中学校",{type:"select",options:SEL.chugaku}),
+  f("子"+i+"_高校","高校",{type:"select",options:SEL.koukou}),
+  f("子"+i+"_大学","大学・進学",{type:"select",options:SEL.daigaku}),
+  f("子"+i+"_大学居住","大学の住まい",{type:"select",options:SEL.kyoju,cond:{id:"子"+i+"_大学",vals:["国公立","私立(文系)","私立(理系)","短大","専門学校"]}}),
+  f("子"+i+"_学費","現在の学費",{type:"number",unit:"円/年"}),
+  f("子"+i+"_給食教材","給食費・教材費・PTA会費など",{type:"number",unit:"円/年"}),
+  f("子"+i+"_習い事","習いごと",{type:"number",unit:"円/年"}),
+  f("子"+i+"_小遣い等","お小遣い・交通費・携帯・洋服など",{type:"number",unit:"円/年"}),
+]};}
+
+let childCount = 1;
+
+function buildConfig(){
+ return [
+ {sec:"ご家族", title:"◎ 基本・ご家族について", note:"※お子さま予定の場合は未来の生年月日を記入",
+   fields:[ f("作成日","作成日（西暦）",{type:"date"}) ],
+   groups:[
+     {sub:"夫",fields:[ f("夫_名前","夫：お名前（ふりがな・名字なし）"), f("夫_生年月日","夫：生年月日（西暦）",{type:"date"}) ]},
+     {sub:"妻",fields:[ f("妻_名前","妻：お名前（ふりがな・名字なし）"), f("妻_生年月日","妻：生年月日（西暦）",{type:"date"}) ]},
+   ],
+   childArea:"family",
+   fieldsAfter:[ f("住所_都道府県","お住まい（都道府県）",{type:"select",options:SEL.pref}) ]},
+ {sec:"預金", title:"◎ 預金", note:"⚠️ ここに入れるのは「すぐ使えるお金」だけ！ NISA・投資・保険は含めません（あとの「資産」「保険」タブで別に聞きます）",
+   fields:[ f("預金合計","預金の合計額（普通預金＋定期＋手元の現金）",{type:"number",unit:"万円",ph:"例：300"}) ]},
+ {sec:"お仕事", title:"◎ お仕事について",
+   groups:["夫","妻"].map(w=>({sub:w,fields:[
+     f(w+"_職業",w+"：職業",{type:"select",options:SEL.shokugyo}),
+     f(w+"_年収",w+"：年収",{type:"number",unit:"万円"}),
+     f(w+"_退職金",w+"：退職金",{type:"number",unit:"万円"}),
+     f(w+"_退職年齢",w+"：退職予定年齢",{type:"number",unit:"歳"}),
+     f(w+"_年金種別",w+"：年金種別",{type:"select",options:SEL.pension}),
+   ]})),
+   fieldsAfter:[ f("就労_メモ","何歳まで働くか・今後の転職予定など",{type:"textarea"}) ]},
+ {sec:"他の収入", title:"◎ その他の収入",
+   groups:["夫","妻"].map(w=>({sub:w,fields:[
+     f(w+"_他収入項目",w+"：項目（なければ空欄でOK）",{type:"select",options:SEL.otherinc}),
+     f(w+"_他収入期間",w+"：期間",{ph:"○年○月〜○年○月",cond:{id:w+"_他収入項目",any:true}}),
+     f(w+"_他収入区分",w+"：支払区分",{type:"select",options:SEL.pay,cond:{id:w+"_他収入項目",any:true}}),
+     f(w+"_他収入金額",w+"：金額",{type:"number",unit:"円",cond:{id:w+"_他収入項目",any:true}}),
+   ]}))},
+ {sec:"子の費用", title:"◎ お子さんにかかるお金",
+   childArea:"cost",
+   fieldsAfter:[ f("子育て_希望","今後の子育ての希望（留学・お小遣い・塾など）",{type:"textarea"}) ]},
+ {sec:"住まい", title:"◎ お住まいについて",
+   fields:[ f("住まい_建物","建物種別",{type:"select",options:SEL.build}),
+            f("住まい_所有","所有形態",{type:"select",options:SEL.own}) ],
+   groups:[
+     {sub:"【賃貸の場合】",cond:{id:"住まい_所有",vals:["賃貸"]},fields:[
+       f("賃貸_家賃","家賃（管理費込）",{type:"number",unit:"円/月"}),
+       f("賃貸_更新料","更新料",{type:"number",unit:"円(○年ごと)"}),
+       f("賃貸_敷金","敷金",{type:"number",unit:"円"}),
+       f("賃貸_礼金","礼金",{type:"number",unit:"円"}),
+       f("賃貸_火災保険","火災保険",{type:"number",unit:"円"}),
+       f("賃貸_地震保険","地震保険",{type:"number",unit:"円"}),
+     ]},
+     {sub:"【持ち家の場合】",cond:{id:"住まい_所有",vals:["持ち家"]},fields:[
+       f("持家_借入日","ローン借入日（購入日）",{type:"month"}),
+       f("持家_固定資産税","固定資産税",{type:"number",unit:"円/年"}),
+       f("持家_維持費","年間維持費",{type:"number",unit:"円/年"}),
+       f("持家_火災保険","火災保険",{type:"number",unit:"円"}),
+       f("持家_火災保険周期","火災保険は何年ごとの支払い？",{type:"number",unit:"年ごと",cond:{id:"持家_火災保険",any:true}}),
+       f("持家_地震保険","地震保険",{type:"number",unit:"円"}),
+       f("持家_地震保険周期","地震保険は何年ごとの支払い？",{type:"number",unit:"年ごと",cond:{id:"持家_地震保険",any:true}}),
+     ]},
+     ...["①","②"].map(i=>({sub:"住宅ローン"+i,cond:{id:"住まい_所有",vals:["持ち家"]},fields:[
+       f("住ローン"+i+"_名義","名義人",{type:"select",options:SEL.contractor}),
+       f("住ローン"+i+"_頭金","頭金",{type:"number",unit:"万円"}),
+       f("住ローン"+i+"_総額","借入総額",{type:"number",unit:"万円"}),
+       f("住ローン"+i+"_期間","返済期間",{type:"number",unit:"年"}),
+       f("住ローン"+i+"_団信","団信",{type:"select",options:SEL.yn}),
+       f("住ローン"+i+"_金利型","金利タイプ",{type:"select",options:SEL.rate}),
+       f("住ローン"+i+"_利率","利率",{type:"number",unit:"％"}),
+     ]})),
+   ],
+   fieldsAfter:[ f("住まい_今後","今後の住まいの考え（買い替え・老人ホームなど）",{type:"textarea"}) ]},
+ {sec:"ローン", title:"◎ ローン（住宅以外）",
+   groups:["①","②","③","④"].map(i=>({sub:"ローン"+i,fields:[
+     f("ローン"+i+"_項目","項目",{type:"select",options:SEL.loanitem}),
+     f("ローン"+i+"_名義","名義人"),
+     f("ローン"+i+"_完済","完済予定",{type:"number",unit:"歳まで"}),
+     f("ローン"+i+"_返済額","返済額",{type:"number",unit:"万円/年"}),
+     f("ローン"+i+"_残高","借入残高",{type:"number",unit:"万円"}),
+   ]}))},
+ {sec:"お車", title:"◎ お車（ガソリン代は除く）",
+   groups:["①","②","③"].map(i=>({sub:"車"+i,fields:[
+     f("車"+i+"_車種","車種"),
+     f("車"+i+"_使用者","主な使用者"),
+     f("車"+i+"_取得","取得時期",{type:"month"}),
+     f("車"+i+"_コスト","コスト（車検・タイヤ等）",{type:"number",unit:"円/年"}),
+     f("車"+i+"_税金","税金",{type:"number",unit:"円/年"}),
+     f("車"+i+"_保険","自動車保険",{type:"number",unit:"円(月/年払)"}),
+   ]})),
+   fieldsAfter:[ f("車_買替","今後の買い替え予定（例：1台目55歳300万）",{type:"textarea"}) ]},
+ {sec:"固定費", title:"◎ 固定費（毎月の継続費）", note:"毎月かかる費用：時期(○歳〜○歳)/区分/金額(円)",
+   groups:KOTEI.map(it=>({sub:it,fields:[
+     f("固"+it+"_時期","時期",{ph:"○歳〜○歳"}),
+     f("固"+it+"_区分","支払区分",{type:"select",options:SEL.permon}),
+     f("固"+it+"_金額","支出額",{type:"number",unit:"円"}),
+   ]}))},
+ {sec:"生活費", title:"◎ 生活費・変動費（月額）",
+   fields:SEIKATSU.map(it=>f("生活_"+it,it,{type:"number",unit:"円/月"}))},
+ {sec:"保険", title:"◎ 保険（自動車・火災保険以外）", note:"名前/契約者/被保険者/種類/期間/支払/保険料",
+   groups:Array.from({length:INS_N},(_,k)=>k+1).map(i=>({sub:"保険 "+i,fields:[
+     f("保険"+i+"_名前","名前・会社"),
+     f("保険"+i+"_契約者","契約者",{type:"select",options:SEL.contractor}),
+     f("保険"+i+"_被保険者","被保険者"),
+     f("保険"+i+"_分類","保険の分類",{type:"select",options:SEL.hokenbunrui}),
+     f("保険"+i+"_種類","種類",{type:"select",options:SEL.hoken}),
+     f("保険"+i+"_期間","契約期間",{ph:"○歳〜○歳"}),
+     f("保険"+i+"_支払","支払区分",{type:"select",options:SEL.pay}),
+     f("保険"+i+"_保険料","保険料",{type:"number",unit:"円"}),
+     f("保険"+i+"_死亡保障","死亡保険金額（わかれば）",{type:"number",unit:"万円"}),
+   ]})),
+   fieldsAfter:[ f("保険_考え","保険の考え（解約予定・残したい保険など）",{type:"textarea"}) ]},
+ {sec:"資産", title:"◎ 投資・財形・DC・iDeCoなど",
+   groups:[{sub:"iDeCo・企業型DC（確定拠出年金）",fields:[
+     f("DC_加入","加入していますか？",{type:"select",options:SEL.dc}),
+     f("DC_夫掛金","夫：掛金",{type:"number",unit:"円/月",cond:{id:"DC_加入",vals:["夫のみ","夫婦とも"]}}),
+     f("DC_妻掛金","妻：掛金",{type:"number",unit:"円/月",cond:{id:"DC_加入",vals:["妻のみ","夫婦とも"]}}),
+     f("DC_評価額","現在の評価額（夫婦合計）",{type:"number",unit:"万円",cond:{id:"DC_加入",vals:["夫のみ","妻のみ","夫婦とも"]}}),
+   ]}].concat(ASSETS.map(({n,note})=>({sub:n,fields:[
+     f(n+"_種類",n+"：種類・商品",{ph:note}),
+     f(n+"_評価額","現在評価額",{type:"number",unit:"万円"}),
+     f(n+"_積立額","年間積立額",{type:"number",unit:"円"}),
+     f(n+"_期間","積立期間",{ph:"○歳〜○歳"}),
+     f(n+"_利回り","予定利回り",{type:"number",unit:"％/年"}),
+   ]})))},
+ {sec:"特別費", title:"◎ 特別費（イベント・不定期）", note:"旅行や家電など：時期(○歳〜○歳)/区分/金額(円)",
+   groups:TOKUBETSU.map(it=>({sub:it,fields:[
+     f("固"+it+"_時期","時期",{ph:"○歳〜○歳"}),
+     f("固"+it+"_区分","支払区分",{type:"select",options:SEL.permon}),
+     f("固"+it+"_金額","支出額",{type:"number",unit:"円"}),
+   ]})),
+   fieldsAfter:[ f("老後_考え","老後を含めた今後の考え（旅行・趣味・修繕費など）",{type:"textarea"}) ]},
+ {sec:"家計改善", title:"◎ 家計改善メモ（節約・見直し用）", note:"※FTSの計算には使いません。固定費見直し・提案のためのメモです",
+   groups:[
+     {sub:"通信費",fields:[
+       f("改善_格安SIM検討","格安SIM・プラン見直し",{type:"select",options:SEL.kakusim}),
+       f("改善_ネット回線","自宅のネット回線会社"),
+     ]},
+     {sub:"光熱費",fields:[
+       f("改善_電気会社","電気会社"),
+       f("改善_ガス会社","ガス会社"),
+       f("改善_光熱費見直し","電気・ガスの乗り換え",{type:"select",options:SEL.konetsu}),
+     ]},
+     {sub:"キャッシュレス・ポイント",fields:[
+       f("改善_決済","使っているキャッシュレス決済",{type:"textarea",ph:"PayPay/楽天Pay/d払い など"}),
+       f("改善_ポイント","貯めているポイント",{type:"textarea",ph:"楽天/Vポイント/Ponta/dポイント など"}),
+       f("改善_経済圏","メインの経済圏",{type:"select",options:SEL.keizai}),
+       f("改善_ふるさと納税","ふるさと納税",{type:"select",options:SEL.furusato}),
+     ]},
+     {sub:"借入・カード",fields:[
+       f("改善_リボ有無","リボ・カードローンの利用",{type:"select",options:SEL.ribo}),
+       f("改善_リボ残高","リボ・カードローン残高",{type:"number",unit:"万円",cond:{id:"改善_リボ有無",vals:["あり"]}}),
+       f("改善_借入金利","その金利",{type:"number",unit:"％",cond:{id:"改善_リボ有無",vals:["あり"]}}),
+       f("改善_住宅ローン借換","住宅ローンの借り換え",{type:"select",options:SEL.karikae}),
+     ]},
+   ],
+   fieldsAfter:[ f("改善_見直したい","見直したい固定費・家計の悩み（自由記入）",{type:"textarea"}) ]},
+ {sec:"その他", title:"◎ その他の情報",
+   fields:[
+     f("携帯会社","携帯の会社",{type:"select",options:SEL.carrier}),
+     f("カード等","クレジットカード・電子マネー・ポイント",{type:"textarea"}),
+     f("ネットサイト","よく使うネットサイト",{ph:"Amazon/楽天/Yahoo! など"}),
+   ]},
+ ];
+}
+
+let CONFIG = buildConfig();
+let ALL=[]; let cur=0; let moneyIds=new Set();
+let CONDS=[]; let condSeq=0;
+const KEY="lifeplan_form_v3";
+let state={};
+try{const s=JSON.parse(localStorage.getItem(KEY)||"{}"); state=s.data||{}; if(s.childCount) childCount=s.childCount;}catch(e){}
+
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");}
+function fieldHTML(fl){
+  ALL.push({id:fl.id,label:fl.label});
+  const unit=fl.unit?` <span class="unit">(${fl.unit})</span>`:"";
+  const money = fl.type==="number" && fl.unit.indexOf("円")>=0;
+  if(money) moneyIds.add(fl.id);
+  let wid="";
+  if(fl.cond){const cid="cond"+(condSeq++); CONDS.push({id:cid,cond:fl.cond}); wid=` id="${cid}"`;}
+  let input;
+  if(fl.type==="select"){
+    input=`<select id="${fl.id}" onchange="upd('${fl.id}',this.value)"><option value=""></option>`+
+      fl.options.map(o=>`<option>${esc(o)}</option>`).join("")+`</select>`;
+  }else if(fl.type==="textarea"){
+    input=`<textarea id="${fl.id}" oninput="upd('${fl.id}',this.value)" placeholder="${esc(fl.ph)}"></textarea>`;
+  }else if(money){
+    input=`<input type="text" inputmode="numeric" id="${fl.id}" oninput="updMoney('${fl.id}',this)" placeholder="${esc(fl.ph)}">`;
+  }else if(fl.type==="number"){
+    input=`<input type="text" inputmode="decimal" id="${fl.id}" oninput="upd('${fl.id}',this.value)" placeholder="${esc(fl.ph)}">`;
+  }else{
+    input=`<input type="${fl.type}" id="${fl.id}" oninput="upd('${fl.id}',this.value)" placeholder="${esc(fl.ph)}">`;
+  }
+  return `<div class="field"${wid}><label for="${fl.id}">${esc(fl.label)}${unit}</label>${input}</div>`;
+}
+function groupHTML(g){
+  let extra="";
+  if(g.child){extra=`<button class="btn del" onclick="delChild(${g.child})">この子を削除</button>`;}
+  let h=`<div class="sub">${esc(g.sub)}${extra}</div>`;
+  g.fields.forEach(fl=>h+=fieldHTML(fl));
+  if(g.cond){const cid="cond"+(condSeq++); CONDS.push({id:cid,cond:g.cond}); return `<div id="${cid}">${h}</div>`;}
+  return h;
+}
+const STAGE_KEYS=["幼稚園","小学校","中学校","高校","大学"];
+function costBlockHTML(i){
+  let h=`<div class="sub">${i}人目のお子様<button class="btn del" onclick="delChild(${i})">この子を削除</button></div>`;
+  h+=`<div class="childinfo" id="childinfo${i}">（ご家族タブで生年月日を入れると年齢が出ます）</div>`;
+  childCost(i).fields.forEach(fl=>{
+    let fh=fieldHTML(fl);
+    const sk=STAGE_KEYS.find(k=>fl.id.endsWith("_"+k));
+    if(sk) fh=fh.replace("</label>",` <span class="tag" id="${fl.id}_tag"></span></label>`);
+    h+=fh;
+  });
+  return h;
+}
+function childArea(kind){
+  let h="";
+  for(let i=1;i<=childCount;i++){ h+= kind==="family"?groupHTML(childFamily(i)):costBlockHTML(i); }
+  h+=`<button class="btn add" onclick="addChild()">＋ お子さまを追加</button>`;
+  return h;
+}
+const STAGES=[["幼稚園",0,5],["小学校",6,11],["中学校",12,14],["高校",15,17],["大学",18,22]];
+function ageFrom(bd){if(!bd)return null; const d=new Date(bd); if(isNaN(d.getTime()))return null;
+  const t=new Date(); let a=t.getFullYear()-d.getFullYear(); const m=t.getMonth()-d.getMonth();
+  if(m<0||(m===0&&t.getDate()<d.getDate()))a--; return a;}
+function stageOf(age){if(age==null)return null; if(age<0)return "誕生前";
+  for(const [n,lo,hi] of STAGES){if(age>=lo&&age<=hi)return n;} return "社会人";}
+function updateChildInfo(){
+  for(let i=1;i<=childCount;i++){
+    const age=ageFrom(state["子"+i+"_生年月日"]);
+    const info=document.getElementById("childinfo"+i);
+    if(info) info.textContent = age==null? "（ご家族タブで生年月日を入れると年齢が出ます）"
+      : "現在 "+age+"歳・今は「"+stageOf(age)+"」※選択は今後の進路を選んでください";
+    STAGES.forEach(([n,lo,hi])=>{
+      const tag=document.getElementById("子"+i+"_"+n+"_tag"); if(!tag)return;
+      if(age==null){tag.textContent="";tag.className="tag";}
+      else if(age>hi){tag.textContent="済";tag.className="tag past";}
+      else if(age>=lo){tag.textContent="在学中";tag.className="tag now";}
+      else{tag.textContent="これから";tag.className="tag soon";}
+    });
+  }
+}
+
+function renderForm(){
+  CONFIG=buildConfig(); ALL=[]; moneyIds=new Set(); CONDS=[]; condSeq=0;
+  // tab bar
+  let tb="";
+  CONFIG.forEach((s,i)=> tb+=`<button class="chip" id="chip${i}" onclick="showTab(${i})">${esc(s.sec)}</button>`);
+  const sumIdx=CONFIG.length;
+  tb+=`<button class="chip sum" id="chip${sumIdx}" onclick="showTab(${sumIdx})">家計まとめ</button>`;
+  document.getElementById("tabbar").innerHTML=tb;
+  // panels
+  let html="";
+  CONFIG.forEach((s,i)=>{
+    html+=`<div class="panel" id="panel${i}"><div class="card"><div class="sec-head">${esc(s.title)}</div>`;
+    if(s.note) html+=`<div class="sec-note">${esc(s.note)}</div>`;
+    (s.fields||[]).forEach(fl=> html+=fieldHTML(fl));
+    (s.groups||[]).forEach(g=> html+=groupHTML(g));
+    if(s.childArea) html+=childArea(s.childArea);
+    (s.fieldsAfter||[]).forEach(fl=> html+=fieldHTML(fl));
+    html+=`</div></div>`;
+  });
+  // summary panel
+  html+=summaryHTML(sumIdx);
+  document.getElementById("form").innerHTML=html;
+  applyState();
+  showTab(Math.min(cur, CONFIG.length));
+}
+function summaryHTML(i){
+  return `<div class="panel" id="panel${i}">
+    <div class="sum-cards">
+      <div class="scard big"><div class="t">世帯年収（夫＋妻）</div><div class="v" id="m_income">—</div><div class="s">税込・額面の合計</div></div>
+      <div class="scard"><div class="t">預金＋金融資産</div><div class="v" id="m_assets">—</div></div>
+      <div class="scard"><div class="t">毎月の支出（概算）</div><div class="v" id="m_month">—</div><div class="s">生活費＋固定費＋保険＋住居</div></div>
+      <div class="scard"><div class="t">年間の特別費（概算）</div><div class="v" id="m_special">—</div><div class="s">毎年かかる費用</div></div>
+      <div class="scard"><div class="t">FTS用：日常生活費/月（住居・保険・車を除く）</div><div class="v" id="m_fts">—</div><div class="s" id="m_fts_man"></div></div>
+      <div class="scard"><div class="t">保険料（月額換算）</div><div class="v" id="m_ins">—</div></div>
+      <div class="scard"><div class="t">車の年間費用合計</div><div class="v" id="m_car">—</div><div class="s">※FTSでは定期支出として入力</div></div>
+    </div>
+    <div class="chartbox"><h3>⚠️ 要確認リスト</h3><p>空欄のままでも大丈夫です。FP側で標準的な数字を入れて、納品時に確認ポイントとしてお返しします。</p><ul id="checklist" style="margin:0;padding-left:20px;font-size:13px;line-height:1.9"></ul></div>
+    <div class="chartbox">
+      <h3>毎月の支出の内訳</h3>
+      <p>入力に応じて自動計算（概算）。空欄は0として計算します。</p>
+      <canvas id="chart" height="220"></canvas>
+    </div>
+  </div>`;
+}
+function fmtMoney(v){const raw=String(v==null?"":v).replace(/[^0-9]/g,""); return raw?Number(raw).toLocaleString("en-US"):"";}
+function applyState(){
+  ALL.forEach(({id})=>{const el=document.getElementById(id); if(el&&state[id]!=null){
+    el.value = moneyIds.has(id) ? fmtMoney(state[id]) : state[id];
+  }});
+}
+function upd(id,val){state[id]=val; persist(); compute();}
+function updMoney(id,el){const raw=el.value.replace(/[^0-9]/g,""); state[id]=raw; el.value=raw?Number(raw).toLocaleString("en-US"):""; persist(); compute();}
+function persist(){
+  localStorage.setItem(KEY, JSON.stringify({data:state, childCount}));
+  document.getElementById("savenote").textContent="自動保存："+new Date().toLocaleTimeString("ja-JP");
+}
+
+// タブ操作
+function showTab(i){
+  cur=i;
+  document.querySelectorAll(".panel").forEach((p,idx)=>p.classList.toggle("active",idx===i));
+  document.querySelectorAll(".chip").forEach((c,idx)=>c.classList.toggle("active",idx===i));
+  const total=CONFIG.length+1;
+  document.getElementById("pg").textContent=(i+1)+" / "+total;
+  const chip=document.getElementById("chip"+i); if(chip) chip.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"});
+  window.scrollTo({top:0,behavior:"smooth"});
+  compute();
+}
+function nextTab(){ if(cur<CONFIG.length) showTab(cur+1); }
+function prevTab(){ if(cur>0) showTab(cur-1); }
+
+// 子ども 追加/削除
+function addChild(){ childCount++; persist(); renderForm(); }
+function delChild(i){
+  if(childCount<=1){toast("最低1人分は残ります");return;}
+  if(!confirm("子ども"+i+"の入力を削除します。よろしいですか？"))return;
+  // shift values down
+  for(let k=i;k<childCount;k++){
+    CHILD_SUFFIXES.forEach(suf=>{
+      state["子"+k+suf]=state["子"+(k+1)+suf]; delete state["子"+(k+1)+suf];
+    });
+  }
+  CHILD_SUFFIXES.forEach(suf=>delete state["子"+childCount+suf]);
+  childCount--; persist(); renderForm();
+}
+
+// 数値
+function num(id){const v=state[id]; if(!v)return 0; const n=parseFloat(String(v).replace(/[^0-9.\-]/g,"")); return isNaN(n)?0:n;}
+const yen=n=>Math.round(n).toLocaleString("ja-JP")+"円";
+const man=n=>n.toLocaleString("ja-JP")+"万円";
+
+let chart=null;
+function compute(){
+  const income=(num("夫_年収")+num("妻_年収")); // 万円
+  let assets=num("預金合計")*10000; ASSETS.forEach(a=>assets+=num(a.n+"_評価額")*10000);
+  let living=0; SEIKATSU.forEach(it=>living+=num("生活_"+it));
+  let fixM=0, fixY=0;
+  ALLFIXED.forEach(it=>{const amt=num("固"+it+"_金額"); if(state["固"+it+"_区分"]==="毎年")fixY+=amt; else fixM+=amt;});
+  let insM=0; for(let i=1;i<=INS_N;i++){const p=num("保険"+i+"_保険料"); if(!p)continue; insM+= state["保険"+i+"_支払"]==="年払"? p/12 : p;}
+  let house=0;
+  if(state["住まい_所有"]==="持ち家"){ house=num("持家_維持費")/12 + num("持家_固定資産税")/12; }
+  else { house=num("賃貸_家賃"); }
+  const monthTotal=living+fixM+insM+house;
+  set("m_income", income? man(income):"—");
+  set("m_assets", assets? yen(assets):"—");
+  set("m_month", monthTotal? yen(monthTotal):"—");
+  set("m_special", fixY? yen(fixY):"—");
+  set("m_ins", insM? yen(insM):"—");
+  const ftsM=living+fixM;
+  set("m_fts", ftsM? yen(ftsM):"—");
+  const fm=document.getElementById("m_fts_man"); if(fm) fm.textContent= ftsM? "FTSには「"+(Math.round(ftsM/1000)/10)+"万円」と入力":"";
+  let carY=0; ["①","②","③"].forEach(i=>{carY+=num("車"+i+"_コスト")+num("車"+i+"_税金")+num("車"+i+"_保険");});
+  set("m_car", carY? yen(carY):"—");
+  updateChecklist();
+  drawChart(living,fixM,insM,house);
+  updateChildInfo();
+  applyConditions();
+  updateTabStatus();
+}
+function applyConditions(){
+  CONDS.forEach(({id,cond})=>{
+    const el=document.getElementById(id); if(!el)return;
+    const v=state[cond.id]||"";
+    const show = cond.any ? !!v : cond.vals.includes(v);
+    el.style.display = show ? "" : "none";
+  });
+}
+function sectionIds(s){
+  let ids=[];
+  (s.fields||[]).forEach(fl=>ids.push(fl.id));
+  (s.groups||[]).forEach(g=>g.fields.forEach(fl=>ids.push(fl.id)));
+  if(s.childArea==="family")for(let i=1;i<=childCount;i++)childFamily(i).fields.forEach(fl=>ids.push(fl.id));
+  if(s.childArea==="cost")for(let i=1;i<=childCount;i++)childCost(i).fields.forEach(fl=>ids.push(fl.id));
+  (s.fieldsAfter||[]).forEach(fl=>ids.push(fl.id));
+  return ids;
+}
+function tabHasInput(s){
+  return sectionIds(s).some(id=>{
+    if(/^固.*_区分$/.test(id)) return false;
+    const v=state[id]; return v!=null && String(v).trim()!=="";
+  });
+}
+function updateTabStatus(){
+  CONFIG.forEach((s,i)=>{
+    const chip=document.getElementById("chip"+i); if(!chip)return;
+    const touched=tabHasInput(s);
+    chip.classList.toggle("touched",touched);
+    chip.textContent = touched ? "● "+s.sec : s.sec;
+  });
+}
+function updateChecklist(){
+  const ul=document.getElementById("checklist"); if(!ul) return;
+  const items=[];
+  for(let i=1;i<=INS_N;i++){
+    if(num("保険"+i+"_保険料")){
+      if(!state["保険"+i+"_支払"]) items.push("保険 "+i+"：支払区分（月払/年払）が空欄です");
+      if(!state["保険"+i+"_分類"]) items.push("保険 "+i+"：保険の分類が空欄です");
+    }
+  }
+  ASSETS.forEach(a=>{ if((num(a.n+"_評価額")||num(a.n+"_積立額")) && !state[a.n+"_利回り"]) items.push(a.n+"：予定利回りが空欄です（空欄なら0%で計算します）"); });
+  if(num("持家_火災保険") && !num("持家_火災保険周期")) items.push("火災保険：何年ごとの支払いか空欄です");
+  if(num("持家_地震保険") && !num("持家_地震保険周期")) items.push("地震保険：何年ごとの支払いか空欄です");
+  for(let i=1;i<=childCount;i++){
+    if(!state["子"+i+"_生年月日"]){
+      const hasData=CHILD_SUFFIXES.some(suf=>suf!=="_名前"&&suf!=="_生年月日"&&state["子"+i+suf]);
+      if(hasData) items.push("子ども"+i+"：生年月日が空欄のまま進路・費用が入力されています");
+    }
+  }
+  ["夫","妻"].forEach(w=>{ if(num(w+"_退職金") && !num(w+"_退職年齢")) items.push(w+"：退職金の額はあるのに退職予定年齢が空欄です"); });
+  ul.innerHTML = items.length? items.map(t=>"<li>"+esc(t)+"</li>").join("") : "<li style='color:var(--ok)'>今のところ確認ポイントはありません 👌</li>";
+}
+function set(id,v){const el=document.getElementById(id); if(el)el.textContent=v;}
+function drawChart(living,fixM,insM,house){
+  const cv=document.getElementById("chart"); if(!cv||typeof Chart==="undefined")return;
+  const data=[living,fixM,insM,house];
+  const labels=["生活費","固定費(毎月)","保険料(月)","住居費"];
+  if(data.every(v=>!v)){ if(chart){chart.destroy();chart=null;} return; }
+  if(chart){chart.data.datasets[0].data=data; chart.update(); return;}
+  chart=new Chart(cv,{type:"doughnut",data:{labels,datasets:[{data,
+    backgroundColor:["#2e5496","#5b8def","#e76f51","#f4a261"],borderWidth:2,borderColor:"#fff"}]},
+    options:{plugins:{legend:{position:"bottom",labels:{font:{size:12},padding:14}},
+      tooltip:{callbacks:{label:c=>c.label+"："+Math.round(c.parsed).toLocaleString("ja-JP")+"円"}}},
+      cutout:"58%"}});
+}
+
+// Excel出力
+function exportXLSX(){
+  if(typeof XLSX==="undefined"){toast("Excel準備中…数秒後にもう一度");return;}
+  const aoa=[["ライフプラン ヒアリングシート"],["作成日 "+(state["作成日"]||"")],[]];
+  const fmtV=(fl)=>{let v=state[fl.id]; v=(v==null?"":String(v));
+    if(moneyIds.has(fl.id)){const r=v.replace(/[^0-9]/g,""); v=r?Number(r).toLocaleString("en-US"):"";} return v;};
+  const pf=(fl)=> aoa.push([fl.label+(fl.unit?"（"+fl.unit+"）":""), fmtV(fl)]);
+  CONFIG.forEach(s=>{
+    aoa.push(["■ "+s.title.replace(/^◎\s*/,"")]);
+    (s.fields||[]).forEach(pf);
+    (s.groups||[]).forEach(g=>{aoa.push(["　【"+g.sub+"】"]); g.fields.forEach(pf);});
+    if(s.childArea==="family")for(let i=1;i<=childCount;i++){aoa.push(["　【子ども"+i+"】"]); childFamily(i).fields.forEach(pf);}
+    if(s.childArea==="cost")for(let i=1;i<=childCount;i++){aoa.push(["　【"+i+"人目のお子様】"]); childCost(i).fields.forEach(pf);}
+    (s.fieldsAfter||[]).forEach(pf);
+    aoa.push([]);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"]=[{wch:40},{wch:30}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"ヒアリング");
+  const name=state["子1_名前"]||state["夫_名前"]||"ライフプラン";
+  XLSX.writeFile(wb,"ライフプラン_"+name+"_"+new Date().toISOString().slice(0,10)+".xlsx");
+  toast("Excelをダウンロードしました");
+}
+// CSV
+function csvEscape(v){v=(v==null?"":String(v)); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function exportCSV(){
+  const secOf={};
+  CONFIG.forEach(s=>{
+    (s.fields||[]).forEach(fl=>secOf[fl.id]=s.sec);
+    if(s.childArea==="family")for(let i=1;i<=childCount;i++)childFamily(i).fields.forEach(fl=>secOf[fl.id]=s.sec);
+    if(s.childArea==="cost")for(let i=1;i<=childCount;i++)childCost(i).fields.forEach(fl=>secOf[fl.id]=s.sec);
+    (s.groups||[]).forEach(g=>g.fields.forEach(fl=>secOf[fl.id]=s.sec+" / "+g.sub));
+    (s.fieldsAfter||[]).forEach(fl=>secOf[fl.id]=s.sec);
+  });
+  let rows=[["id","セクション","項目","値"]];
+  ALL.forEach(({id,label})=> rows.push([id, secOf[id]||"", label, state[id]||""]));
+  const csv="﻿"+rows.map(r=>r.map(csvEscape).join(",")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const name=(state["子1_名前"]||state["夫_名前"]||"ライフプラン");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="ライフプラン_"+name+"_"+new Date().toISOString().slice(0,10)+".csv"; a.click();
+  toast("CSVをダウンロードしました");
+}
+function parseCSV(text){
+  text=text.replace(/^﻿/,""); const rows=[];let row=[],cell="",q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;}else q=false;} else cell+=c; }
+    else{ if(c==='"')q=true; else if(c===","){row.push(cell);cell="";}
+      else if(c==="\n"){row.push(cell);rows.push(row);row=[];cell="";}
+      else if(c==="\r"){} else cell+=c; } }
+  if(cell!==""||row.length){row.push(cell);rows.push(row);}
+  return rows;
+}
+function importCSV(input){
+  const file=input.files[0]; if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const rows=parseCSV(e.target.result); if(!rows.length){toast("読み込めません");return;}
+    const head=rows[0].map(h=>h.trim());
+    const idi=head.indexOf("id"), li=head.indexOf("項目"), vi=head.indexOf("値");
+    const labelMap={}; document.querySelectorAll("[id]").forEach(()=>{});
+    let maxChild=1, ns={};
+    rows.slice(1).forEach(rw=>{
+      let id=idi>=0?(rw[idi]||"").trim():"";
+      const val=vi>=0?rw[vi]:rw[rw.length-1];
+      if(!id) return;
+      ns[id]=val;
+      const m=id.match(/^子(\d+)_/); if(m) maxChild=Math.max(maxChild,parseInt(m[1]));
+    });
+    state=ns; childCount=Math.max(1,maxChild); persist(); renderForm();
+    toast(Object.keys(ns).length+"件を読み込みました");
+  };
+  r.readAsText(file); input.value="";
+}
+function clearAll(){
+  if(!confirm("入力内容をすべて消去します。よろしいですか？"))return;
+  state={}; childCount=1; localStorage.removeItem(KEY); renderForm();
+  document.getElementById("savenote").textContent="自動保存：—"; toast("消去しました");
+}
+let tt; function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");
+  clearTimeout(tt);tt=setTimeout(()=>t.classList.remove("show"),2200);}
+
+function setDefaults(){
+  KOTEI.forEach(it=>{const k="固"+it+"_区分"; if(state[k]==null) state[k]="毎月";});
+  TOKUBETSU.forEach(it=>{const k="固"+it+"_区分"; if(state[k]==null) state[k]="毎年";});
+  if(state["作成日"]==null){
+    const t=new Date();
+    state["作成日"]=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
+  }
+}
+setDefaults();
+renderForm();
+</script>
+</body>
+</html>
