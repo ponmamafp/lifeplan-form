@@ -31,6 +31,7 @@
   .btn.primary{background:var(--blue);color:#fff}
   .btn.ghost{background:var(--lblue);color:var(--navy)}
   .btn.warn{background:#fdecec;color:#c0392b}
+  .btn.copy{background:#2f9e63;color:#fff}
   .btn.add{background:#eaf7f0;color:var(--ok);width:100%;padding:12px;margin:6px 0 2px;font-size:13px}
   .btn.del{background:transparent;color:#c0392b;font-size:11px;padding:4px 8px;float:right}
   .save-note{font-size:11px;color:var(--ok);text-align:center;padding:5px;background:#fff}
@@ -40,6 +41,11 @@
   .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
   .sec-head{background:var(--blue);color:#fff;padding:12px 16px;font-weight:700;font-size:15px}
   .sec-note{font-size:12px;color:var(--muted);padding:8px 16px 0}
+  .funcard{border-color:#f4c9b0;box-shadow:0 2px 14px rgba(231,111,81,.15)}
+  .funcard .sec-head{background:linear-gradient(135deg,#e76f51,#f4a261)}
+  .funcard .sec-note{color:#c9682b;font-weight:600;font-size:13px;line-height:1.7}
+  .funcard .sub{background:#fdeee7;color:#c9682b;font-size:14px}
+  .funcard input,.funcard select{background:#fff8f3;border-color:#f0cdb8}
   .sub{background:var(--lblue);color:var(--navy);font-weight:700;font-size:13px;padding:8px 16px;border-top:1px solid var(--line)}
   .childinfo{font-size:12px;color:var(--blue);font-weight:700;padding:8px 16px 0}
   .tag{font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;margin-left:6px;vertical-align:middle}
@@ -78,25 +84,19 @@
 <body>
 <header>
   <h1>ライフプラン ヒアリングフォーム</h1>
-  <p>黄色い欄に入力（自動保存）。<strong>わからない欄は飛ばしてOK！</strong>空欄はこちらで確認してお返しします。</p>
+  <p>黄色い欄に入力（自動保存）。タブで項目を切り替えられます。</p>
 </header>
 <div class="tabbar" id="tabbar"></div>
 <div class="tools">
-  <button class="btn primary s" onclick="exportCSV()">CSV出力（提出用）</button>
-  <button class="btn ghost s" onclick="exportXLSX()">Excel出力（控え用）</button>
+  <button class="btn copy s" onclick="copyText()">テキストコピー</button>
+  <button class="btn primary s" onclick="exportXLSX()">Excel出力</button>
+  <button class="btn ghost s" onclick="exportCSV()">CSV保存</button>
   <button class="btn ghost s" onclick="document.getElementById('csvfile').click()">CSV読込</button>
   <button class="btn warn s" onclick="clearAll()">全消去</button>
   <input type="file" id="csvfile" accept=".csv" style="display:none" onchange="importCSV(this)">
 </div>
 <div class="save-note" id="savenote">自動保存：—</div>
 <div class="wrap" id="form"></div>
-
-<footer style="max-width:680px;margin:0 auto;padding:20px 16px 8px;font-size:11px;color:var(--muted);text-align:center;line-height:1.8">
-  本フォームはFPぽんのライフプラン作成サービス専用ツールです。<br>
-  無断での複製・転用・商用利用（同業FPの方によるご利用を含む）はご遠慮ください。<br>
-  入力内容はこの端末内にのみ保存され、どこにも送信されません。<br>
-  © 2026 FPぽん
-</footer>
 
 <div class="nav">
   <button class="btn ghost" onclick="prevTab()">← 戻る</button>
@@ -111,8 +111,6 @@ const SEL={
   pay:["月払","年払"], permon:["毎月","毎年"], yn:["あり","なし"],
   rate:["固定","変動"], build:["マンション","戸建て"], own:["賃貸","持ち家"],
   hoken:["終身","定期"], contractor:["夫","妻"],
-  hokenbunrui:["生命保険","個人年金保険","医療・がん保険","学資・こども保険","介護保険","その他(火災・傷害など)"],
-  dc:["なし","夫のみ","妻のみ","夫婦とも"],
   yochien:["公立","私立","通わせない"],
   shogaku:["公立","私立"], chugaku:["公立","私立"], koukou:["公立","私立"],
   daigaku:["進学しない","国公立","私立(文系)","私立(理系)","短大","専門学校"],
@@ -135,8 +133,17 @@ function f(id,label,opt={}){return {id,label,type:opt.type||"text",unit:opt.unit
 
 const KOTEI=["光熱費(電気ガス水道)","ケータイ代","インターネット代","サブスク","カード年会費",
   "コンタクト・医療費","ご主人のお小遣い","奥様のお小遣い"];
-const TOKUBETSU=["旅行","家電の買い替え","プレゼント・お年玉","お子さんの結婚祝い","里帰り",
-  "その他①","その他②","その他③"];
+const TOKUBETSU_META=[
+  {it:"旅行", ic:"🌏", nm:"旅行"},
+  {it:"家電の買い替え", ic:"🖥️", nm:"家電の買い替え"},
+  {it:"プレゼント・お年玉", ic:"🎁", nm:"プレゼント・お年玉"},
+  {it:"お子さんの結婚祝い", ic:"💍", nm:"お子さんの結婚祝い"},
+  {it:"里帰り", ic:"✈️", nm:"里帰り"},
+  {it:"その他①", ic:"⭐", nm:"叶えたいこと①"},
+  {it:"その他②", ic:"⭐", nm:"叶えたいこと②"},
+  {it:"その他③", ic:"⭐", nm:"叶えたいこと③"},
+];
+const TOKUBETSU=TOKUBETSU_META.map(m=>m.it);
 const ALLFIXED=KOTEI.concat(TOKUBETSU);
 const SEIKATSU=["食費","日用品","交通費(ガソリン電車)","レジャー","外食費","その他①","その他②","その他③"];
 const ASSETS=[{n:"奥様NISA",note:"証券会社名も"},{n:"ご主人NISA",note:"証券会社名も"},
@@ -163,10 +170,32 @@ function childCost(i){return {sub:i+"人目のお子様",child:i,fields:[
 ]};}
 
 let childCount = 1;
+let insCount = 1;
+let assetCount = 1;
+const INS_SUF=["_名前","_契約者","_被保険者","_種類","_期間","_支払","_保険料"];
+const ASSET_SUF=["_種類","_名義","_評価額","_積立額","_積立期間","_利回り","_取崩開始"];
+function insBlock(i){return {sub:"保険 "+i,fields:[
+  f("保険"+i+"_名前","名前・会社"),
+  f("保険"+i+"_契約者","契約者",{type:"select",options:SEL.contractor}),
+  f("保険"+i+"_被保険者","被保険者"),
+  f("保険"+i+"_種類","種類",{type:"select",options:SEL.hoken}),
+  f("保険"+i+"_期間","契約期間",{ph:"○歳〜○歳"}),
+  f("保険"+i+"_支払","支払区分",{type:"select",options:SEL.pay}),
+  f("保険"+i+"_保険料","保険料",{type:"number",unit:"円"}),
+]};}
+function assetBlock(i){return {sub:"金融資産 "+i,fields:[
+  f("資産"+i+"_種類","種類・商品",{ph:"NISA/株/債券/iDeCo/財形/DC など"}),
+  f("資産"+i+"_名義","名義",{type:"select",options:["夫","妻","子","共有"]}),
+  f("資産"+i+"_評価額","現在評価額",{type:"number",unit:"万円"}),
+  f("資産"+i+"_積立額","年間積立額",{type:"number",unit:"円"}),
+  f("資産"+i+"_積立期間","積立期間",{ph:"○歳〜○歳"}),
+  f("資産"+i+"_利回り","予定利回り",{type:"number",unit:"％/年"}),
+  f("資産"+i+"_取崩開始","取り崩し開始（使い始める歳）",{type:"number",unit:"歳から"}),
+]};}
 
 function buildConfig(){
  return [
- {sec:"ご家族", title:"◎ 基本・ご家族について", note:"※お子さま予定の場合は未来の生年月日を記入",
+ {sec:"ご家族", title:"◎ 基本・ご家族について", note:"お名前は任意（ニックネームでOK）。生年月日だけ入れてください。作成日は今日を自動入力しています。",
    fields:[ f("作成日","作成日（西暦）",{type:"date"}) ],
    groups:[
      {sub:"夫",fields:[ f("夫_名前","夫：お名前（ふりがな・名字なし）"), f("夫_生年月日","夫：生年月日（西暦）",{type:"date"}) ]},
@@ -174,8 +203,8 @@ function buildConfig(){
    ],
    childArea:"family",
    fieldsAfter:[ f("住所_都道府県","お住まい（都道府県）",{type:"select",options:SEL.pref}) ]},
- {sec:"預金", title:"◎ 預金", note:"⚠️ ここに入れるのは「すぐ使えるお金」だけ！ NISA・投資・保険は含めません（あとの「資産」「保険」タブで別に聞きます）",
-   fields:[ f("預金合計","預金の合計額（普通預金＋定期＋手元の現金）",{type:"number",unit:"万円",ph:"例：300"}) ]},
+ {sec:"預金", title:"◎ 預金", note:"⚠️ ここは「すぐ使える預貯金」だけ。iDeCo・NISA・投資・保険などの資産運用は含めません（それらは後の「資産」タブに入れてください）。",
+   fields:[ f("預金合計","預金の合計額（現金・普通/定期預金のみ）",{type:"number",unit:"円"}) ]},
  {sec:"お仕事", title:"◎ お仕事について",
    groups:["夫","妻"].map(w=>({sub:w,fields:[
      f(w+"_職業",w+"：職業",{type:"select",options:SEL.shokugyo}),
@@ -183,6 +212,7 @@ function buildConfig(){
      f(w+"_退職金",w+"：退職金",{type:"number",unit:"万円"}),
      f(w+"_退職年齢",w+"：退職予定年齢",{type:"number",unit:"歳"}),
      f(w+"_年金種別",w+"：年金種別",{type:"select",options:SEL.pension}),
+     f(w+"_年金見込額",w+"：年金見込額（額面・年額／天引き前）",{type:"number",unit:"万円/年"}),
    ]})),
    fieldsAfter:[ f("就労_メモ","何歳まで働くか・今後の転職予定など",{type:"textarea"}) ]},
  {sec:"他の収入", title:"◎ その他の収入",
@@ -211,13 +241,11 @@ function buildConfig(){
        f("持家_借入日","ローン借入日（購入日）",{type:"month"}),
        f("持家_固定資産税","固定資産税",{type:"number",unit:"円/年"}),
        f("持家_維持費","年間維持費",{type:"number",unit:"円/年"}),
-       f("持家_火災保険","火災保険",{type:"number",unit:"円"}),
-       f("持家_火災保険周期","火災保険は何年ごとの支払い？",{type:"number",unit:"年ごと",cond:{id:"持家_火災保険",any:true}}),
-       f("持家_地震保険","地震保険",{type:"number",unit:"円"}),
-       f("持家_地震保険周期","地震保険は何年ごとの支払い？",{type:"number",unit:"年ごと",cond:{id:"持家_地震保険",any:true}}),
+       f("持家_火災保険","火災保険",{type:"number",unit:"円(○年ごと)"}),
+       f("持家_地震保険","地震保険",{type:"number",unit:"円(○年ごと)"}),
      ]},
      ...["①","②"].map(i=>({sub:"住宅ローン"+i,cond:{id:"住まい_所有",vals:["持ち家"]},fields:[
-       f("住ローン"+i+"_名義","名義人",{type:"select",options:SEL.contractor}),
+       f("住ローン"+i+"_名義","名義人"),
        f("住ローン"+i+"_頭金","頭金",{type:"number",unit:"万円"}),
        f("住ローン"+i+"_総額","借入総額",{type:"number",unit:"万円"}),
        f("住ローン"+i+"_期間","返済期間",{type:"number",unit:"年"}),
@@ -225,6 +253,11 @@ function buildConfig(){
        f("住ローン"+i+"_金利型","金利タイプ",{type:"select",options:SEL.rate}),
        f("住ローン"+i+"_利率","利率",{type:"number",unit:"％"}),
      ]})),
+     {sub:"将来の修繕・リフォーム",cond:{id:"住まい_所有",vals:["持ち家"]},fields:[
+       f("修繕_時期","予定時期",{ph:"○歳ごろ"}),
+       f("修繕_金額","予定金額",{type:"number",unit:"万円"}),
+       f("修繕_内容","内容メモ",{ph:"外壁・屋根・水回り など"}),
+     ]},
    ],
    fieldsAfter:[ f("住まい_今後","今後の住まいの考え（買い替え・老人ホームなど）",{type:"textarea"}) ]},
  {sec:"ローン", title:"◎ ローン（住宅以外）",
@@ -253,40 +286,34 @@ function buildConfig(){
    ]}))},
  {sec:"生活費", title:"◎ 生活費・変動費（月額）",
    fields:SEIKATSU.map(it=>f("生活_"+it,it,{type:"number",unit:"円/月"}))},
- {sec:"保険", title:"◎ 保険（自動車・火災保険以外）", note:"名前/契約者/被保険者/種類/期間/支払/保険料",
-   groups:Array.from({length:INS_N},(_,k)=>k+1).map(i=>({sub:"保険 "+i,fields:[
-     f("保険"+i+"_名前","名前・会社"),
-     f("保険"+i+"_契約者","契約者",{type:"select",options:SEL.contractor}),
-     f("保険"+i+"_被保険者","被保険者"),
-     f("保険"+i+"_分類","保険の分類",{type:"select",options:SEL.hokenbunrui}),
-     f("保険"+i+"_種類","種類",{type:"select",options:SEL.hoken}),
-     f("保険"+i+"_期間","契約期間",{ph:"○歳〜○歳"}),
-     f("保険"+i+"_支払","支払区分",{type:"select",options:SEL.pay}),
-     f("保険"+i+"_保険料","保険料",{type:"number",unit:"円"}),
-     f("保険"+i+"_死亡保障","死亡保険金額（わかれば）",{type:"number",unit:"万円"}),
-   ]})),
+ {sec:"保険", title:"◎ 保険（自動車・火災保険以外）", note:"必要な件数だけ「＋保険を追加」で増やせます",
+   repeat:"ins",
    fieldsAfter:[ f("保険_考え","保険の考え（解約予定・残したい保険など）",{type:"textarea"}) ]},
- {sec:"資産", title:"◎ 投資・財形・DC・iDeCoなど",
-   groups:[{sub:"iDeCo・企業型DC（確定拠出年金）",fields:[
-     f("DC_加入","加入していますか？",{type:"select",options:SEL.dc}),
-     f("DC_夫掛金","夫：掛金",{type:"number",unit:"円/月",cond:{id:"DC_加入",vals:["夫のみ","夫婦とも"]}}),
-     f("DC_妻掛金","妻：掛金",{type:"number",unit:"円/月",cond:{id:"DC_加入",vals:["妻のみ","夫婦とも"]}}),
-     f("DC_評価額","現在の評価額（夫婦合計）",{type:"number",unit:"万円",cond:{id:"DC_加入",vals:["夫のみ","妻のみ","夫婦とも"]}}),
-   ]}].concat(ASSETS.map(({n,note})=>({sub:n,fields:[
-     f(n+"_種類",n+"：種類・商品",{ph:note}),
-     f(n+"_評価額","現在評価額",{type:"number",unit:"万円"}),
-     f(n+"_積立額","年間積立額",{type:"number",unit:"円"}),
-     f(n+"_期間","積立期間",{ph:"○歳〜○歳"}),
-     f(n+"_利回り","予定利回り",{type:"number",unit:"％/年"}),
-   ]})))},
- {sec:"特別費", title:"◎ 特別費（イベント・不定期）", note:"旅行や家電など：時期(○歳〜○歳)/区分/金額(円)",
-   groups:TOKUBETSU.map(it=>({sub:it,fields:[
-     f("固"+it+"_時期","時期",{ph:"○歳〜○歳"}),
-     f("固"+it+"_区分","支払区分",{type:"select",options:SEL.permon}),
-     f("固"+it+"_金額","支出額",{type:"number",unit:"円"}),
+ {sec:"資産", title:"◎ 投資・財形・DC・iDeCoなど", note:"NISAや積立など「＋金融資産を追加」で増やせます",
+   repeat:"asset"},
+ {sec:"親相続", title:"◎ 親・相続について（将来）", note:"介護や相続など将来の大きな変動要因（わかる範囲でOK）",
+   groups:[
+     {sub:"親の介護",fields:[
+       f("介護_予定","介護の負担予定",{type:"select",options:["予定あり","なし","未定"]}),
+       f("介護_時期","時期",{ph:"○歳ごろ〜",cond:{id:"介護_予定",vals:["予定あり"]}}),
+       f("介護_費用","費用（目安）",{type:"number",unit:"万円/年",cond:{id:"介護_予定",vals:["予定あり"]}}),
+     ]},
+     {sub:"援助・相続",fields:[
+       f("援助_予定","親からの援助予定",{type:"select",options:["あり","なし","未定"]}),
+       f("援助_金額","援助の金額",{type:"number",unit:"万円",cond:{id:"援助_予定",vals:["あり"]}}),
+       f("相続_予定","相続の予定",{type:"select",options:["あり","なし","未定"]}),
+       f("相続_金額","相続の見込額",{type:"number",unit:"万円",cond:{id:"相続_予定",vals:["あり"]}}),
+     ]},
+   ]},
+ {sec:"特別費", title:"✨ 叶えたいことリスト（特別費）", fun:true,
+   note:"ここは我慢の欄じゃありません。『いつか叶えたいこと』を書く欄です。旅行・家電・お祝い…ワクワクしながらどうぞ♪",
+   groups:TOKUBETSU_META.map(m=>({sub:m.ic+" "+m.nm,fields:[
+     f("固"+m.it+"_時期","いつ？（何歳ごろ／毎年）",{ph:"○歳〜○歳"}),
+     f("固"+m.it+"_区分","頻度",{type:"select",options:SEL.permon}),
+     f("固"+m.it+"_金額","いくらで？",{type:"number",unit:"円"}),
    ]})),
-   fieldsAfter:[ f("老後_考え","老後を含めた今後の考え（旅行・趣味・修繕費など）",{type:"textarea"}) ]},
- {sec:"家計改善", title:"◎ 家計改善メモ（節約・見直し用）", note:"※FTSの計算には使いません。固定費見直し・提案のためのメモです",
+   fieldsAfter:[ f("老後_考え","老後にやりたいこと（旅行・趣味・リフォームなど）",{type:"textarea"}) ]},
+ {sec:"家計改善", title:"◎ 家計改善メモ（節約・見直し用）", note:"※ライフプラン作成には使いません。ライフプラン作成のみの方は入力をスキップで大丈夫です。固定費見直し・ご提案のためのメモです。",
    groups:[
      {sub:"通信費",fields:[
        f("改善_格安SIM検討","格安SIM・プラン見直し",{type:"select",options:SEL.kakusim}),
@@ -320,19 +347,37 @@ function buildConfig(){
  ];
 }
 
-let CONFIG = buildConfig();
+const SECTION_ORDER=["ご家族","お仕事","他の収入","預金","資産","住まい","ローン","お車","生活費","固定費","保険","子の費用","親相続","特別費","家計改善","その他"];
+function orderConfig(c){return c.slice().sort((a,b)=>{let ia=SECTION_ORDER.indexOf(a.sec),ib=SECTION_ORDER.indexOf(b.sec); if(ia<0)ia=999; if(ib<0)ib=999; return ia-ib;});}
+let CONFIG = orderConfig(buildConfig());
 let ALL=[]; let cur=0; let moneyIds=new Set();
 let CONDS=[]; let condSeq=0;
-const KEY="lifeplan_form_v3";
+const KEY="lifeplan_form_v2";
 let state={};
-try{const s=JSON.parse(localStorage.getItem(KEY)||"{}"); state=s.data||{}; if(s.childCount) childCount=s.childCount;}catch(e){}
+try{const s=JSON.parse(localStorage.getItem(KEY)||"{}"); state=s.data||{}; if(s.childCount) childCount=s.childCount; if(s.insCount) insCount=s.insCount; if(s.assetCount) assetCount=s.assetCount;}catch(e){}
 
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");}
+function exampleFor(fl){
+  const id=fl.id;
+  if(id==="夫_名前")return "（例）たろう";
+  if(id==="妻_名前")return "（例）はなこ";
+  if(/^子\d+_名前$/.test(id))return "（例）ゆうた";
+  if(id==="夫_職業"||id==="妻_職業")return "";
+  if(fl.type==="number"){
+    if(fl.unit.indexOf("万円")>=0)return "（例）500";
+    if(fl.unit.indexOf("円")>=0)return "（例）30000";
+    if(fl.unit.indexOf("歳")>=0)return "（例）40";
+    if(fl.unit.indexOf("％")>=0)return "（例）3";
+    if(fl.unit.indexOf("年")>=0)return "（例）35";
+  }
+  return "";
+}
 function fieldHTML(fl){
   ALL.push({id:fl.id,label:fl.label});
   const unit=fl.unit?` <span class="unit">(${fl.unit})</span>`:"";
   const money = fl.type==="number" && fl.unit.indexOf("円")>=0;
   if(money) moneyIds.add(fl.id);
+  const ph = fl.ph || exampleFor(fl);
   let wid="";
   if(fl.cond){const cid="cond"+(condSeq++); CONDS.push({id:cid,cond:fl.cond}); wid=` id="${cid}"`;}
   let input;
@@ -340,13 +385,13 @@ function fieldHTML(fl){
     input=`<select id="${fl.id}" onchange="upd('${fl.id}',this.value)"><option value=""></option>`+
       fl.options.map(o=>`<option>${esc(o)}</option>`).join("")+`</select>`;
   }else if(fl.type==="textarea"){
-    input=`<textarea id="${fl.id}" oninput="upd('${fl.id}',this.value)" placeholder="${esc(fl.ph)}"></textarea>`;
+    input=`<textarea id="${fl.id}" oninput="upd('${fl.id}',this.value)" placeholder="${esc(ph)}"></textarea>`;
   }else if(money){
-    input=`<input type="text" inputmode="numeric" id="${fl.id}" oninput="updMoney('${fl.id}',this)" placeholder="${esc(fl.ph)}">`;
+    input=`<input type="text" inputmode="numeric" id="${fl.id}" oninput="updMoney('${fl.id}',this)" placeholder="${esc(ph)}">`;
   }else if(fl.type==="number"){
-    input=`<input type="text" inputmode="decimal" id="${fl.id}" oninput="upd('${fl.id}',this.value)" placeholder="${esc(fl.ph)}">`;
+    input=`<input type="text" inputmode="decimal" id="${fl.id}" oninput="upd('${fl.id}',this.value)" placeholder="${esc(ph)}">`;
   }else{
-    input=`<input type="${fl.type}" id="${fl.id}" oninput="upd('${fl.id}',this.value)" placeholder="${esc(fl.ph)}">`;
+    input=`<input type="${fl.type}" id="${fl.id}" oninput="upd('${fl.id}',this.value)" placeholder="${esc(ph)}">`;
   }
   return `<div class="field"${wid}><label for="${fl.id}">${esc(fl.label)}${unit}</label>${input}</div>`;
 }
@@ -376,6 +421,28 @@ function childArea(kind){
   h+=`<button class="btn add" onclick="addChild()">＋ お子さまを追加</button>`;
   return h;
 }
+function repeatArea(kind){
+  const n = kind==="ins"?insCount:assetCount;
+  let h="";
+  for(let i=1;i<=n;i++){
+    const g = kind==="ins"?insBlock(i):assetBlock(i);
+    h+=`<div class="sub">${esc(g.sub)}<button class="btn del" onclick="delRepeat('${kind}',${i})">削除</button></div>`;
+    g.fields.forEach(fl=>h+=fieldHTML(fl));
+  }
+  h+=`<button class="btn add" onclick="addRepeat('${kind}')">${kind==="ins"?"＋ 保険を追加":"＋ 金融資産を追加"}</button>`;
+  return h;
+}
+function addRepeat(kind){ if(kind==="ins")insCount++; else assetCount++; persist(); renderForm(); }
+function delRepeat(kind,i){
+  let cnt=kind==="ins"?insCount:assetCount;
+  if(cnt<=1){toast("最低1件は残ります");return;}
+  if(!confirm("この項目を削除しますか？"))return;
+  const pre=kind==="ins"?"保険":"資産", suf=kind==="ins"?INS_SUF:ASSET_SUF;
+  for(let k=i;k<cnt;k++){ suf.forEach(sf=>{state[pre+k+sf]=state[pre+(k+1)+sf]; delete state[pre+(k+1)+sf];}); }
+  suf.forEach(sf=>delete state[pre+cnt+sf]);
+  if(kind==="ins")insCount--; else assetCount--;
+  persist(); renderForm();
+}
 const STAGES=[["幼稚園",0,5],["小学校",6,11],["中学校",12,14],["高校",15,17],["大学",18,22]];
 function ageFrom(bd){if(!bd)return null; const d=new Date(bd); if(isNaN(d.getTime()))return null;
   const t=new Date(); let a=t.getFullYear()-d.getFullYear(); const m=t.getMonth()-d.getMonth();
@@ -399,7 +466,7 @@ function updateChildInfo(){
 }
 
 function renderForm(){
-  CONFIG=buildConfig(); ALL=[]; moneyIds=new Set(); CONDS=[]; condSeq=0;
+  CONFIG=orderConfig(buildConfig()); ALL=[]; moneyIds=new Set(); CONDS=[]; condSeq=0;
   // tab bar
   let tb="";
   CONFIG.forEach((s,i)=> tb+=`<button class="chip" id="chip${i}" onclick="showTab(${i})">${esc(s.sec)}</button>`);
@@ -409,11 +476,12 @@ function renderForm(){
   // panels
   let html="";
   CONFIG.forEach((s,i)=>{
-    html+=`<div class="panel" id="panel${i}"><div class="card"><div class="sec-head">${esc(s.title)}</div>`;
+    html+=`<div class="panel" id="panel${i}"><div class="card${s.fun?' funcard':''}"><div class="sec-head">${esc(s.title)}</div>`;
     if(s.note) html+=`<div class="sec-note">${esc(s.note)}</div>`;
     (s.fields||[]).forEach(fl=> html+=fieldHTML(fl));
     (s.groups||[]).forEach(g=> html+=groupHTML(g));
     if(s.childArea) html+=childArea(s.childArea);
+    if(s.repeat) html+=repeatArea(s.repeat);
     (s.fieldsAfter||[]).forEach(fl=> html+=fieldHTML(fl));
     html+=`</div></div>`;
   });
@@ -430,11 +498,8 @@ function summaryHTML(i){
       <div class="scard"><div class="t">預金＋金融資産</div><div class="v" id="m_assets">—</div></div>
       <div class="scard"><div class="t">毎月の支出（概算）</div><div class="v" id="m_month">—</div><div class="s">生活費＋固定費＋保険＋住居</div></div>
       <div class="scard"><div class="t">年間の特別費（概算）</div><div class="v" id="m_special">—</div><div class="s">毎年かかる費用</div></div>
-      <div class="scard"><div class="t">FTS用：日常生活費/月（住居・保険・車を除く）</div><div class="v" id="m_fts">—</div><div class="s" id="m_fts_man"></div></div>
       <div class="scard"><div class="t">保険料（月額換算）</div><div class="v" id="m_ins">—</div></div>
-      <div class="scard"><div class="t">車の年間費用合計</div><div class="v" id="m_car">—</div><div class="s">※FTSでは定期支出として入力</div></div>
     </div>
-    <div class="chartbox"><h3>⚠️ 要確認リスト</h3><p>空欄のままでも大丈夫です。FP側で標準的な数字を入れて、納品時に確認ポイントとしてお返しします。</p><ul id="checklist" style="margin:0;padding-left:20px;font-size:13px;line-height:1.9"></ul></div>
     <div class="chartbox">
       <h3>毎月の支出の内訳</h3>
       <p>入力に応じて自動計算（概算）。空欄は0として計算します。</p>
@@ -451,7 +516,7 @@ function applyState(){
 function upd(id,val){state[id]=val; persist(); compute();}
 function updMoney(id,el){const raw=el.value.replace(/[^0-9]/g,""); state[id]=raw; el.value=raw?Number(raw).toLocaleString("en-US"):""; persist(); compute();}
 function persist(){
-  localStorage.setItem(KEY, JSON.stringify({data:state, childCount}));
+  localStorage.setItem(KEY, JSON.stringify({data:state, childCount, insCount, assetCount}));
   document.getElementById("savenote").textContent="自動保存："+new Date().toLocaleTimeString("ja-JP");
 }
 
@@ -492,11 +557,11 @@ const man=n=>n.toLocaleString("ja-JP")+"万円";
 let chart=null;
 function compute(){
   const income=(num("夫_年収")+num("妻_年収")); // 万円
-  let assets=num("預金合計")*10000; ASSETS.forEach(a=>assets+=num(a.n+"_評価額")*10000);
+  let assets=num("預金合計"); for(let i=1;i<=assetCount;i++)assets+=num("資産"+i+"_評価額")*10000;
   let living=0; SEIKATSU.forEach(it=>living+=num("生活_"+it));
   let fixM=0, fixY=0;
   ALLFIXED.forEach(it=>{const amt=num("固"+it+"_金額"); if(state["固"+it+"_区分"]==="毎年")fixY+=amt; else fixM+=amt;});
-  let insM=0; for(let i=1;i<=INS_N;i++){const p=num("保険"+i+"_保険料"); if(!p)continue; insM+= state["保険"+i+"_支払"]==="年払"? p/12 : p;}
+  let insM=0; for(let i=1;i<=insCount;i++){const p=num("保険"+i+"_保険料"); if(!p)continue; insM+= state["保険"+i+"_支払"]==="年払"? p/12 : p;}
   let house=0;
   if(state["住まい_所有"]==="持ち家"){ house=num("持家_維持費")/12 + num("持家_固定資産税")/12; }
   else { house=num("賃貸_家賃"); }
@@ -506,12 +571,6 @@ function compute(){
   set("m_month", monthTotal? yen(monthTotal):"—");
   set("m_special", fixY? yen(fixY):"—");
   set("m_ins", insM? yen(insM):"—");
-  const ftsM=living+fixM;
-  set("m_fts", ftsM? yen(ftsM):"—");
-  const fm=document.getElementById("m_fts_man"); if(fm) fm.textContent= ftsM? "FTSには「"+(Math.round(ftsM/1000)/10)+"万円」と入力":"";
-  let carY=0; ["①","②","③"].forEach(i=>{carY+=num("車"+i+"_コスト")+num("車"+i+"_税金")+num("車"+i+"_保険");});
-  set("m_car", carY? yen(carY):"—");
-  updateChecklist();
   drawChart(living,fixM,insM,house);
   updateChildInfo();
   applyConditions();
@@ -531,6 +590,8 @@ function sectionIds(s){
   (s.groups||[]).forEach(g=>g.fields.forEach(fl=>ids.push(fl.id)));
   if(s.childArea==="family")for(let i=1;i<=childCount;i++)childFamily(i).fields.forEach(fl=>ids.push(fl.id));
   if(s.childArea==="cost")for(let i=1;i<=childCount;i++)childCost(i).fields.forEach(fl=>ids.push(fl.id));
+  if(s.repeat==="ins")for(let i=1;i<=insCount;i++)insBlock(i).fields.forEach(fl=>ids.push(fl.id));
+  if(s.repeat==="asset")for(let i=1;i<=assetCount;i++)assetBlock(i).fields.forEach(fl=>ids.push(fl.id));
   (s.fieldsAfter||[]).forEach(fl=>ids.push(fl.id));
   return ids;
 }
@@ -547,27 +608,6 @@ function updateTabStatus(){
     chip.classList.toggle("touched",touched);
     chip.textContent = touched ? "● "+s.sec : s.sec;
   });
-}
-function updateChecklist(){
-  const ul=document.getElementById("checklist"); if(!ul) return;
-  const items=[];
-  for(let i=1;i<=INS_N;i++){
-    if(num("保険"+i+"_保険料")){
-      if(!state["保険"+i+"_支払"]) items.push("保険 "+i+"：支払区分（月払/年払）が空欄です");
-      if(!state["保険"+i+"_分類"]) items.push("保険 "+i+"：保険の分類が空欄です");
-    }
-  }
-  ASSETS.forEach(a=>{ if((num(a.n+"_評価額")||num(a.n+"_積立額")) && !state[a.n+"_利回り"]) items.push(a.n+"：予定利回りが空欄です（空欄なら0%で計算します）"); });
-  if(num("持家_火災保険") && !num("持家_火災保険周期")) items.push("火災保険：何年ごとの支払いか空欄です");
-  if(num("持家_地震保険") && !num("持家_地震保険周期")) items.push("地震保険：何年ごとの支払いか空欄です");
-  for(let i=1;i<=childCount;i++){
-    if(!state["子"+i+"_生年月日"]){
-      const hasData=CHILD_SUFFIXES.some(suf=>suf!=="_名前"&&suf!=="_生年月日"&&state["子"+i+suf]);
-      if(hasData) items.push("子ども"+i+"：生年月日が空欄のまま進路・費用が入力されています");
-    }
-  }
-  ["夫","妻"].forEach(w=>{ if(num(w+"_退職金") && !num(w+"_退職年齢")) items.push(w+"：退職金の額はあるのに退職予定年齢が空欄です"); });
-  ul.innerHTML = items.length? items.map(t=>"<li>"+esc(t)+"</li>").join("") : "<li style='color:var(--ok)'>今のところ確認ポイントはありません 👌</li>";
 }
 function set(id,v){const el=document.getElementById(id); if(el)el.textContent=v;}
 function drawChart(living,fixM,insM,house){
@@ -596,6 +636,8 @@ function exportXLSX(){
     (s.groups||[]).forEach(g=>{aoa.push(["　【"+g.sub+"】"]); g.fields.forEach(pf);});
     if(s.childArea==="family")for(let i=1;i<=childCount;i++){aoa.push(["　【子ども"+i+"】"]); childFamily(i).fields.forEach(pf);}
     if(s.childArea==="cost")for(let i=1;i<=childCount;i++){aoa.push(["　【"+i+"人目のお子様】"]); childCost(i).fields.forEach(pf);}
+    if(s.repeat==="ins")for(let i=1;i<=insCount;i++){aoa.push(["　【保険"+i+"】"]); insBlock(i).fields.forEach(pf);}
+    if(s.repeat==="asset")for(let i=1;i<=assetCount;i++){aoa.push(["　【金融資産"+i+"】"]); assetBlock(i).fields.forEach(pf);}
     (s.fieldsAfter||[]).forEach(pf);
     aoa.push([]);
   });
@@ -609,23 +651,59 @@ function exportXLSX(){
 }
 // CSV
 function csvEscape(v){v=(v==null?"":String(v)); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
-function exportCSV(){
+function buildCSV(){
   const secOf={};
   CONFIG.forEach(s=>{
     (s.fields||[]).forEach(fl=>secOf[fl.id]=s.sec);
     if(s.childArea==="family")for(let i=1;i<=childCount;i++)childFamily(i).fields.forEach(fl=>secOf[fl.id]=s.sec);
     if(s.childArea==="cost")for(let i=1;i<=childCount;i++)childCost(i).fields.forEach(fl=>secOf[fl.id]=s.sec);
+    if(s.repeat==="ins")for(let i=1;i<=insCount;i++)insBlock(i).fields.forEach(fl=>secOf[fl.id]=s.sec);
+    if(s.repeat==="asset")for(let i=1;i<=assetCount;i++)assetBlock(i).fields.forEach(fl=>secOf[fl.id]=s.sec);
     (s.groups||[]).forEach(g=>g.fields.forEach(fl=>secOf[fl.id]=s.sec+" / "+g.sub));
     (s.fieldsAfter||[]).forEach(fl=>secOf[fl.id]=s.sec);
   });
   let rows=[["id","セクション","項目","値"]];
   ALL.forEach(({id,label})=> rows.push([id, secOf[id]||"", label, state[id]||""]));
   const csv="﻿"+rows.map(r=>r.map(csvEscape).join(",")).join("\r\n");
-  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const name=(state["子1_名前"]||state["夫_名前"]||"ライフプラン");
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-  a.download="ライフプラン_"+name+"_"+new Date().toISOString().slice(0,10)+".csv"; a.click();
-  toast("CSVをダウンロードしました");
+  const filename="ライフプラン_"+name+"_"+new Date().toISOString().slice(0,10)+".csv";
+  return {csv, filename};
+}
+function exportCSV(){
+  const {csv,filename}=buildCSV();
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  toast("CSVを保存しました");
+}
+function buildText(){
+  let lines=["【ライフプラン ヒアリングシート】"];
+  const has=(id)=>state[id]!=null && String(state[id]).trim()!=="";
+  const val=(fl)=>{let v=state[fl.id]; if(!has(fl.id))return null;
+    const mm=fl.id.match(/^固(.+)_(区分|時期)$/); if(mm && !has("固"+mm[1]+"_金額")) return null;
+    if(moneyIds.has(fl.id)){const r=String(v).replace(/[^0-9]/g,""); v=r?Number(r).toLocaleString("en-US"):v;}
+    return v+(fl.unit?" "+fl.unit:"");};
+  const pushF=(fl,arr)=>{const v=val(fl); if(v!=null)arr.push("・"+fl.label+"："+v);};
+  CONFIG.forEach(s=>{
+    let arr=[];
+    (s.fields||[]).forEach(fl=>pushF(fl,arr));
+    (s.groups||[]).forEach(g=>{let ga=[];g.fields.forEach(fl=>pushF(fl,ga)); if(ga.length){arr.push("〔"+g.sub+"〕");arr.push(...ga);}});
+    if(s.childArea==="family")for(let i=1;i<=childCount;i++){let ga=[];childFamily(i).fields.forEach(fl=>pushF(fl,ga)); if(ga.length){arr.push("〔子ども"+i+"〕");arr.push(...ga);}}
+    if(s.childArea==="cost")for(let i=1;i<=childCount;i++){let ga=[];childCost(i).fields.forEach(fl=>pushF(fl,ga)); if(ga.length){arr.push("〔"+i+"人目のお子様〕");arr.push(...ga);}}
+    if(s.repeat==="ins")for(let i=1;i<=insCount;i++){let ga=[];insBlock(i).fields.forEach(fl=>pushF(fl,ga)); if(ga.length){arr.push("〔保険"+i+"〕");arr.push(...ga);}}
+    if(s.repeat==="asset")for(let i=1;i<=assetCount;i++){let ga=[];assetBlock(i).fields.forEach(fl=>pushF(fl,ga)); if(ga.length){arr.push("〔金融資産"+i+"〕");arr.push(...ga);}}
+    (s.fieldsAfter||[]).forEach(fl=>pushF(fl,arr));
+    if(arr.length){lines.push(""); lines.push("■ "+s.sec); lines.push(...arr);}
+  });
+  return lines.join("\n");
+}
+async function copyText(){
+  const t=buildText();
+  try{ await navigator.clipboard.writeText(t); toast("入力内容をコピーしました。LINEに貼り付けてね"); return; }catch(e){}
+  const ta=document.createElement("textarea"); ta.value=t; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); toast("コピーしました。LINEに貼り付けてね"); }
+  catch(_){ toast("コピーできませんでした"); }
+  document.body.removeChild(ta);
 }
 function parseCSV(text){
   text=text.replace(/^﻿/,""); const rows=[];let row=[],cell="",q=false;
@@ -645,22 +723,24 @@ function importCSV(input){
     const head=rows[0].map(h=>h.trim());
     const idi=head.indexOf("id"), li=head.indexOf("項目"), vi=head.indexOf("値");
     const labelMap={}; document.querySelectorAll("[id]").forEach(()=>{});
-    let maxChild=1, ns={};
+    let maxChild=1, maxIns=1, maxAsset=1, ns={};
     rows.slice(1).forEach(rw=>{
       let id=idi>=0?(rw[idi]||"").trim():"";
       const val=vi>=0?rw[vi]:rw[rw.length-1];
       if(!id) return;
       ns[id]=val;
       const m=id.match(/^子(\d+)_/); if(m) maxChild=Math.max(maxChild,parseInt(m[1]));
+      const mi=id.match(/^保険(\d+)_/); if(mi) maxIns=Math.max(maxIns,parseInt(mi[1]));
+      const ma=id.match(/^資産(\d+)_/); if(ma) maxAsset=Math.max(maxAsset,parseInt(ma[1]));
     });
-    state=ns; childCount=Math.max(1,maxChild); persist(); renderForm();
+    state=ns; childCount=Math.max(1,maxChild); insCount=Math.max(1,maxIns); assetCount=Math.max(1,maxAsset); persist(); renderForm();
     toast(Object.keys(ns).length+"件を読み込みました");
   };
   r.readAsText(file); input.value="";
 }
 function clearAll(){
   if(!confirm("入力内容をすべて消去します。よろしいですか？"))return;
-  state={}; childCount=1; localStorage.removeItem(KEY); renderForm();
+  state={}; childCount=1; insCount=1; assetCount=1; localStorage.removeItem(KEY); setDefaults(); renderForm();
   document.getElementById("savenote").textContent="自動保存：—"; toast("消去しました");
 }
 let tt; function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");
@@ -669,10 +749,7 @@ let tt; function toast(m){const t=document.getElementById("toast");t.textContent
 function setDefaults(){
   KOTEI.forEach(it=>{const k="固"+it+"_区分"; if(state[k]==null) state[k]="毎月";});
   TOKUBETSU.forEach(it=>{const k="固"+it+"_区分"; if(state[k]==null) state[k]="毎年";});
-  if(state["作成日"]==null){
-    const t=new Date();
-    state["作成日"]=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
-  }
+  if(!state["作成日"]) state["作成日"]=new Date().toISOString().slice(0,10);
 }
 setDefaults();
 renderForm();
