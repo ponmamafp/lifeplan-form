@@ -111,6 +111,7 @@ const SEL={
   pay:["月払","年払"], permon:["毎月","毎年"], yn:["あり","なし"],
   rate:["固定","変動"], build:["マンション","戸建て"], own:["賃貸","持ち家"],
   hoken:["終身","定期"], contractor:["夫","妻"],
+  hokentype:["医療保険","がん保険","死亡保険（定期）","死亡保険（終身）","収入保障保険","学資保険","個人年金保険","介護保険","その他"],
   yochien:["公立","私立","通わせない"],
   shogaku:["公立","私立"], chugaku:["公立","私立"], koukou:["公立","私立"],
   daigaku:["進学しない","国公立","私立(文系)","私立(理系)","短大","専門学校"],
@@ -175,13 +176,13 @@ let assetCount = 1;
 const INS_SUF=["_名前","_契約者","_被保険者","_種類","_期間","_支払","_保険料"];
 const ASSET_SUF=["_種類","_名義","_評価額","_積立額","_積立期間","_利回り","_取崩開始"];
 function insBlock(i){return {sub:"保険 "+i,fields:[
-  f("保険"+i+"_名前","名前・会社"),
-  f("保険"+i+"_契約者","契約者",{type:"select",options:SEL.contractor}),
-  f("保険"+i+"_被保険者","被保険者"),
-  f("保険"+i+"_種類","種類",{type:"select",options:SEL.hoken}),
-  f("保険"+i+"_期間","契約期間",{ph:"○歳〜○歳"}),
-  f("保険"+i+"_支払","支払区分",{type:"select",options:SEL.pay}),
-  f("保険"+i+"_保険料","保険料",{type:"number",unit:"円"}),
+  f("保険"+i+"_名前","保険の名前・会社",{ph:"（例）〇〇生命／医療保険"}),
+  f("保険"+i+"_契約者","契約者（保険料を払う人）",{type:"select",options:SEL.contractor}),
+  f("保険"+i+"_被保険者","被保険者（保障される人）",{type:"select",options:["夫","妻","子","その他"]}),
+  f("保険"+i+"_種類","保険の種類（何の保険？）",{type:"select",options:SEL.hokentype}),
+  f("保険"+i+"_期間","契約期間（終身なら空欄でOK）",{ph:"（例）40歳〜60歳"}),
+  f("保険"+i+"_支払","支払い方法",{type:"select",options:SEL.pay}),
+  f("保険"+i+"_保険料","保険料（上の支払い方法に合わせて）",{type:"number",unit:"円"}),
 ]};}
 function assetBlock(i){return {sub:"金融資産 "+i,fields:[
   f("資産"+i+"_種類","種類・商品",{ph:"NISA/株/債券/iDeCo/財形/DC など"}),
@@ -213,8 +214,8 @@ function buildConfig(){
      f(w+"_退職年齢",w+"：退職予定年齢",{type:"number",unit:"歳"}),
      f(w+"_年金種別",w+"：年金種別",{type:"select",options:SEL.pension}),
      f(w+"_年金見込額",w+"：年金見込額（額面・年額／天引き前）",{type:"number",unit:"万円/年"}),
-   ]})),
-   fieldsAfter:[ f("就労_メモ","何歳まで働くか・今後の転職予定など",{type:"textarea"}) ]},
+     f(w+"_就労メモ",w+"：何歳まで働くか・今後の転職予定など",{type:"textarea"}),
+   ]}))},
  {sec:"他の収入", title:"◎ その他の収入",
    groups:["夫","妻"].map(w=>({sub:w,fields:[
      f(w+"_他収入項目",w+"：項目（なければ空欄でOK）",{type:"select",options:SEL.otherinc}),
@@ -286,7 +287,7 @@ function buildConfig(){
    ]}))},
  {sec:"生活費", title:"◎ 生活費・変動費（月額）",
    fields:SEIKATSU.map(it=>f("生活_"+it,it,{type:"number",unit:"円/月"}))},
- {sec:"保険", title:"◎ 保険（自動車・火災保険以外）", note:"必要な件数だけ「＋保険を追加」で増やせます",
+ {sec:"保険", title:"◎ 生命保険など（自動車・火災・地震保険は除く）", note:"加入中の保険を、証券を見ながら1件ずつ入力してください。対象は 生命保険・医療保険・がん保険・学資保険・個人年金 など。わからない欄は空欄でOK。「＋保険を追加」で増やせます。",
    repeat:"ins",
    fieldsAfter:[ f("保険_考え","保険の考え（解約予定・残したい保険など）",{type:"textarea"}) ]},
  {sec:"資産", title:"◎ 投資・財形・DC・iDeCoなど", note:"NISAや積立など「＋金融資産を追加」で増やせます",
@@ -698,10 +699,10 @@ function buildText(){
 }
 async function copyText(){
   const t=buildText();
-  try{ await navigator.clipboard.writeText(t); toast("入力内容をコピーしました。LINEに貼り付けてね"); return; }catch(e){}
+  try{ await navigator.clipboard.writeText(t); toast("入力内容をコピーしました。こちらをお送りください"); return; }catch(e){}
   const ta=document.createElement("textarea"); ta.value=t; ta.style.position="fixed"; ta.style.opacity="0";
   document.body.appendChild(ta); ta.select();
-  try{ document.execCommand("copy"); toast("コピーしました。LINEに貼り付けてね"); }
+  try{ document.execCommand("copy"); toast("コピーしました。こちらをお送りください"); }
   catch(_){ toast("コピーできませんでした"); }
   document.body.removeChild(ta);
 }
